@@ -1,0 +1,56 @@
+---
+- hosts: all
+  gather_facts: false
+  vars:
+    promtail_version: v2.4.1
+  tasks:
+    - name: test connection
+      ping:
+    - name: create opt directory for prometheus
+      file:
+        path: /opt/promtail
+        state: directory
+      become: yes
+    - name: create opt directory for prometheus
+      file:
+        path: /etc/promtail
+        state: directory
+      become: yes
+    - name: install unzip
+      apt: 
+        name: unzip
+      become: yes  
+    - name: download node exporter
+      get_url:
+        url: https://github.com/grafana/loki/releases/download/{{ promtail_version }}/promtail-linux-amd64.zip
+        dest: /opt/promtail
+      become: yes
+    - name: unarchive node exporter
+      unarchive:
+        remote_src: yes
+        src: /opt/promtail/promtail-linux-amd64.zip
+        dest: /opt/promtail
+      become: yes
+    - name: copy config promotheus 
+      template:
+        src: config.yml
+        dest: /etc/promtail/config.yml
+      become: yes
+    - name: create symlink to node exporter
+      file:
+        path: /usr/bin/promtail
+        state: link
+        src: /opt/promtail/promtail-linux-amd64
+      become: yes
+    - name: install unit file to systemd
+      template:
+        src: promtail.service
+        dest: /etc/systemd/system/promtail.service
+      become: yes
+    - name: configure systemd to use service
+      systemd:
+        daemon_reload: yes
+        enabled: yes
+        state: started
+        name: promtail.service
+      become: yes
